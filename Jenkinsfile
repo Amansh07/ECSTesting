@@ -1,0 +1,48 @@
+
+pipeline {
+    agent any
+    environment {
+        AWS_REGION = 'us-east-1'
+        AWS_ACCOUNT_ID = '206501439294'
+        ECR_REPO = 'ecsautomation'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        ECR_URI = "206501439294.dkr.ecr.us-east-1.amazonaws.com/ecsautomation"
+        ECS_CLUSTER = 'ecsautomationcluster'
+        ECS_SERVICE = 'frontendnginx-service-182eby73'
+        CONTAINER_NAME = 'nginxfrontend'
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Amansh07/ECSTesting.git'
+            }
+        }
+        stage('Build Frontend') {
+            steps {
+                sh 'npm install && npm run build'
+            }
+        }
+        stage('Docker Build & Push') {
+            steps {
+                sh '''
+                aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}
+                docker build -t ${ECR_REPO}:${IMAGE_TAG} .
+                docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_URI}:${IMAGE_TAG}
+                docker push ${ECR_URI}:${IMAGE_TAG}
+                '''
+            }
+        }
+        stage('Update ECS Task Definition') {
+            steps {
+                sh '''
+                TD_ARN=$(aws ecs describe-services --cluster ${ECS_CLUSTER} --services ${ECS_SERVICE} --query "services[0].taskDefinition" --output text --region ${AWS_REGION})
+                aws ecs describe-task-definition --task-definition "$TD_ARN" --region ${AWS_REGION} --query 'taskDefinition' --output json > td.json
+                cat td.json | jq '.containerDefinitions |= map(if .name=="'${CONTAINER_NAME}'" then .image="'${ECR_URI}':'${IMAGE_TAG}'" else . end) | del(.revision,.status,.registeredAt,.compatibilities,.requiresAttributes)' > td-new.json
+                NEW_TD_ARN=$(aws ecs register-task-definition --cli-input-json file://td-new.json --query 'taskDefinition.taskDefinitionArn' --output text --region ${AWS_REGION})
+                aws ecs update-service --cluster ${ECS_CLUSTER} --service ${ECS_SERVICE} --task-definition "$NEW_TD_ARN" --force-new-deployment --region ${AWS_REGION}
+                '''
+            }
+        }
+    }
+}
+
