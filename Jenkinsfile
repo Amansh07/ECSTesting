@@ -17,6 +17,12 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/Amansh07/ECSTesting.git'
             }
         }
+        stage('Debug') {
+    steps {
+        sh 'pwd && ls -la'
+    }
+}
+
         stage('Build Frontend') {
             steps {
                 sh 'npm install && npm run build'
