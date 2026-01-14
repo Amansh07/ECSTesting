@@ -4,11 +4,11 @@ pipeline {
     environment {
         AWS_REGION = 'us-east-1'
         AWS_ACCOUNT_ID = '206501439294'
-        ECR_REPO = 'ecsautomation'
+        ECR_REPO = 'ecstest'
         IMAGE_TAG = "${env.BUILD_NUMBER}"
-        ECR_URI = "206501439294.dkr.ecr.us-east-1.amazonaws.com/ecsautomation"
-        ECS_CLUSTER = 'ecsautomationcluster'
-        ECS_SERVICE = 'frontendnginx-service-182eby73'
+        ECR_URI = "206501439294.dkr.ecr.us-east-1.amazonaws.com/ecstest"
+        ECS_CLUSTER = 'ecsdemotest'
+        ECS_SERVICE = 'frontendnginx-service'
         CONTAINER_NAME = 'nginxfrontend'
     }
     stages {
@@ -45,4 +45,3 @@ pipeline {
         }
     }
 }
-
